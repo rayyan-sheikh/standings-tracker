@@ -36,9 +36,11 @@ export default function QRCodeModal({ url, onClose }: Props) {
           <DialogTitle>Share tournament</DialogTitle>
         </DialogHeader>
         <div ref={qrRef} className="flex justify-center py-4">
-          <QRCode value={url} size={200} />
+          <div className="bg-white p-3 rounded-xl">
+            <QRCode value={url} size={180} />
+          </div>
         </div>
-        <p className="text-xs text-slate-500 break-all">{url}</p>
+        <p className="text-xs text-zinc-600 break-all">{url}</p>
         <div className="flex gap-2 justify-center mt-2">
           <Button variant="outline" size="sm" onClick={copyLink}>
             <Copy className="h-3.5 w-3.5 mr-1" /> Copy link

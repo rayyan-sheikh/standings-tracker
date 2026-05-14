@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trophy, Plus, LogOut, ChevronRight } from 'lucide-react'
+import { Plus, LogOut, ChevronRight } from 'lucide-react'
+import Logo from '@/components/ui/logo'
+import Footer from '@/components/ui/footer'
 
 export default function AdminDashboard() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
@@ -42,21 +44,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-6 w-6" />
-          <h1 className="text-lg font-semibold">Tournament Tracker</h1>
-        </div>
+    <div className="min-h-screen bg-zinc-950">
+      <header className="bg-zinc-900 border-b border-zinc-800 px-4 sm:px-6 py-4 flex items-center justify-between">
+        <Logo color="blue" />
         <Button variant="ghost" size="sm" onClick={signOut}>
           <LogOut className="h-4 w-4 mr-1" /> Sign out
         </Button>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold">Tournaments</h2>
-          <Button size="sm" onClick={() => setShowForm(v => !v)}>
+          <h2 className="text-xl font-semibold text-zinc-100">Tournaments</h2>
+          <Button size="sm" variant="blue" onClick={() => setShowForm(v => !v)}>
             <Plus className="h-4 w-4 mr-1" /> New tournament
           </Button>
         </div>
@@ -74,9 +73,8 @@ export default function AdminDashboard() {
                   <Label htmlFor="t-desc">Description (optional)</Label>
                   <Input id="t-desc" value={description} onChange={e => setDescription(e.target.value)} placeholder="5-a-side tournament" />
                 </div>
-
                 <div>
-                  <p className="text-sm font-medium mb-3">Points rules</p>
+                  <p className="text-sm font-medium text-zinc-300 mb-3">Points rules</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="pts-win">Win</Label>
@@ -96,9 +94,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex gap-2">
-                  <Button type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create'}</Button>
+                  <Button type="submit" variant="blue" disabled={creating}>{creating ? 'Creating…' : 'Create'}</Button>
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
                 </div>
               </form>
@@ -107,18 +104,18 @@ export default function AdminDashboard() {
         )}
 
         {tournaments.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-12">No tournaments yet. Create your first one!</p>
+          <p className="text-zinc-600 text-sm text-center py-12">No tournaments yet. Create your first one!</p>
         ) : (
           <div className="space-y-3">
             {tournaments.map(t => (
               <Link key={t.id} to={`/admin/tournament/${t.id}`}>
-                <Card className="hover:border-slate-300 transition-colors cursor-pointer">
+                <Card className="hover:border-zinc-700 hover:bg-zinc-800/50 transition-colors cursor-pointer">
                   <CardContent className="flex items-center justify-between py-4">
                     <div>
-                      <p className="font-medium">{t.name}</p>
-                      {t.description && <p className="text-sm text-slate-500">{t.description}</p>}
+                      <p className="font-medium text-zinc-100">{t.name}</p>
+                      {t.description && <p className="text-sm text-zinc-500">{t.description}</p>}
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                    <ChevronRight className="h-4 w-4 text-zinc-600" />
                   </CardContent>
                 </Card>
               </Link>
@@ -126,6 +123,7 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+      <Footer color="blue" />
     </div>
   )
 }

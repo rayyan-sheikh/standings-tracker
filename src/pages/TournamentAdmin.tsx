@@ -12,7 +12,9 @@ import RulesEditor from '@/components/admin/RulesEditor'
 import StandingsTable from '@/components/public/StandingsTable'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Trophy, ArrowLeft, QrCode } from 'lucide-react'
+import { ArrowLeft, QrCode } from 'lucide-react'
+import Logo from '@/components/ui/logo'
+import Footer from '@/components/ui/footer'
 
 export default function TournamentAdmin() {
   const { id } = useParams<{ id: string }>()
@@ -52,10 +54,8 @@ export default function TournamentAdmin() {
     const { data: leg } = await supabase
       .from('legs')
       .insert({ tournament_id: id, leg_number: legNumber, name: `Leg ${legNumber}` })
-      .select()
-      .single()
+      .select().single()
     if (!leg) return
-
     const schedule = generateRoundRobin(teams.map(t => t.id), legNumber % 2 === 0)
     const rows = schedule.map(m => ({
       leg_id: leg.id,
@@ -76,9 +76,7 @@ export default function TournamentAdmin() {
 
   const rules: TournamentRules = tournament?.rules ?? DEFAULT_RULES
   const publicUrl = `${window.location.origin}/t/${id}`
-  const displayedMatches = activeLeg === 'all'
-    ? matches
-    : matches.filter(m => m.leg_id === activeLeg)
+  const displayedMatches = activeLeg === 'all' ? matches : matches.filter(m => m.leg_id === activeLeg)
 
   const matchesByRound = displayedMatches.reduce((acc, m) => {
     const key = `${m.leg_id}-${m.round_number}`
@@ -87,64 +85,89 @@ export default function TournamentAdmin() {
     return acc
   }, {} as Record<string, MatchWithTeams[]>)
 
-  if (!tournament) return <div className="p-8 text-slate-500">Loading…</div>
+  if (!tournament) return <div className="p-8 text-zinc-500">Loading…</div>
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/admin" className="text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <Trophy className="h-5 w-5" />
-          <h1 className="font-semibold">{tournament.name}</h1>
+    <div className="min-h-screen bg-zinc-950">
+      <header className="bg-zinc-900 border-b border-zinc-800 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link to="/admin" className="text-zinc-500 hover:text-zinc-200 transition-colors shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div className="min-w-0">
+              <Logo color="blue" />
+              <h1 className="font-semibold text-zinc-300 text-xs mt-0.5 truncate">{tournament.name}</h1>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowQR(true)} className="shrink-0 ml-3">
+            <QrCode className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Share QR</span>
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowQR(true)}>
-          <QrCode className="h-4 w-4 mr-1" /> Share QR
-        </Button>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Tabs defaultValue="teams">
-          <TabsList className="mb-6">
-            <TabsTrigger value="teams">Teams</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule &amp; Results</TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-            <TabsTrigger value="rules">Rules</TabsTrigger>
+          <TabsList className="mb-6 overflow-x-auto no-scrollbar flex-nowrap">
+            {(['teams', 'schedule', 'standings', 'rules'] as const).map(tab => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="data-[state=active]:bg-blue-900/50 data-[state=active]:text-blue-300 capitalize"
+              >
+                {tab === 'schedule' ? 'Schedule' : tab}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="teams">
-            <TeamManager
-              tournamentId={id!}
-              teams={teams}
-              legs={legs}
-              onTeamsChange={() => fetchAll(id!)}
-              onAddLeg={addLeg}
-            />
+            <TeamManager tournamentId={id!} teams={teams} legs={legs} onTeamsChange={() => fetchAll(id!)} onAddLeg={addLeg} />
           </TabsContent>
 
           <TabsContent value="schedule">
             <LegManager legs={legs} activeLeg={activeLeg} onSelectLeg={setActiveLeg} />
-            <div className="space-y-6 mt-4">
-              {Object.entries(matchesByRound).map(([key, roundMatches]) => {
-                const legId = key.split('-')[0]
-                const round = roundMatches[0].round_number
-                const leg = legs.find(l => l.id === legId)
-                return (
-                  <div key={key}>
-                    <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
-                      {leg?.name ?? ''} · Round {round}
-                    </p>
-                    <div className="space-y-2">
-                      {roundMatches.map(m => (
-                        <MatchCard key={m.id} match={m} maxScore={rules.max_score} onUpdate={() => fetchAll(id!)} />
-                      ))}
+            <div className="space-y-8 mt-4">
+              {(() => {
+                const sortedLegs = [...legs]
+                  .filter(l => activeLeg === 'all' || l.id === activeLeg)
+                  .sort((a, b) => a.leg_number - b.leg_number)
+                let counter = activeLeg === 'all'
+                  ? matches.filter(m => legs.find(l => l.id === m.leg_id && l.leg_number < (legs.find(ll => ll.id === activeLeg)?.leg_number ?? 0))).length
+                  : 0
+                // Global counter across all legs for consistent numbering
+                const globalOffset = activeLeg === 'all' ? 0 :
+                  matches.filter(m => {
+                    const mLeg = legs.find(l => l.id === m.leg_id)
+                    const selectedLeg = legs.find(l => l.id === activeLeg)
+                    return mLeg && selectedLeg && mLeg.leg_number < selectedLeg.leg_number
+                  }).length
+                counter = globalOffset
+                return sortedLegs.map(leg => {
+                  const legMatches = displayedMatches
+                    .filter(m => m.leg_id === leg.id)
+                    .sort((a, b) => a.round_number - b.round_number)
+                  if (legMatches.length === 0) return null
+                  return (
+                    <div key={leg.id}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-blue-400">
+                          {leg.name ?? `Leg ${leg.leg_number}`}
+                        </h3>
+                        <div className="flex-1 h-px bg-zinc-800" />
+                      </div>
+                      <div className="space-y-2">
+                        {legMatches.map(m => {
+                          counter++
+                          return <MatchCard key={m.id} match={m} matchNumber={counter} maxScore={rules.max_score} onUpdate={() => fetchAll(id!)} />
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              })()}
               {displayedMatches.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-8">
+                <p className="text-sm text-zinc-600 text-center py-8">
                   {teams.length < 2
                     ? 'Add at least 2 teams first, then add a leg to generate the schedule.'
                     : legs.length === 0
@@ -165,6 +188,7 @@ export default function TournamentAdmin() {
         </Tabs>
       </main>
 
+      <Footer color="blue" />
       {showQR && <QRCodeModal url={publicUrl} onClose={() => setShowQR(false)} />}
     </div>
   )

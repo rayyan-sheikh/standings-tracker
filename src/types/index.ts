@@ -3,6 +3,7 @@ export interface TournamentRules {
   points_draw: number
   points_loss: number
   max_score: number
+  score_unit: string
 }
 
 export const DEFAULT_RULES: TournamentRules = {
@@ -10,6 +11,7 @@ export const DEFAULT_RULES: TournamentRules = {
   points_draw: 1,
   points_loss: 0,
   max_score: 99,
+  score_unit: 'points',
 }
 
 export interface Tournament {

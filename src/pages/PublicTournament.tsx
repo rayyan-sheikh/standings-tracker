@@ -6,7 +6,9 @@ import { DEFAULT_RULES } from '@/types'
 import ScheduleView from '@/components/public/ScheduleView'
 import StandingsTable from '@/components/public/StandingsTable'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Trophy } from 'lucide-react'
+import { Swords } from 'lucide-react'
+import Logo from '@/components/ui/logo'
+import Footer from '@/components/ui/footer'
 
 export default function PublicTournament() {
   const { id } = useParams<{ id: string }>()
@@ -16,9 +18,7 @@ export default function PublicTournament() {
   const [matches, setMatches] = useState<MatchWithTeams[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (id) fetchAll(id)
-  }, [id])
+  useEffect(() => { if (id) fetchAll(id) }, [id])
 
   async function fetchAll(tid: string) {
     const [{ data: t }, { data: te }, { data: l }] = await Promise.all([
@@ -43,40 +43,56 @@ export default function PublicTournament() {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center text-slate-500">Loading…</div>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-500">Loading…</div>
   )
   if (!tournament) return (
-    <div className="min-h-screen flex items-center justify-center text-slate-500">Tournament not found.</div>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-500">Tournament not found.</div>
   )
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-5">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <Trophy className="h-6 w-6 text-slate-700" />
-          <div>
-            <h1 className="text-xl font-bold">{tournament.name}</h1>
-            {tournament.description && <p className="text-sm text-slate-500">{tournament.description}</p>}
+    <div className="min-h-screen bg-zinc-950">
+      <Tabs defaultValue="standings">
+        <header className="bg-zinc-900 border-b border-zinc-800 px-4 sm:px-6 pt-4 pb-0 sticky top-0 z-10">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <Logo color="green" />
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <Swords className="h-4 w-4 text-green-400 shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-base font-bold text-zinc-300 leading-tight">{tournament.name}</h1>
+                {tournament.description && (
+                  <p className="text-xs text-zinc-500 mt-0.5">{tournament.description}</p>
+                )}
+              </div>
+            </div>
+
+            <TabsList className="bg-transparent p-0 h-auto gap-0 rounded-none w-full justify-start border-b border-zinc-800 -mb-px">
+              {(['standings', 'schedule'] as const).map(tab => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className="rounded-none px-4 py-2.5 text-sm font-medium text-zinc-500 border-b-2 border-transparent data-[state=active]:border-green-400 data-[state=active]:text-green-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-zinc-300 transition-colors capitalize"
+                >
+                  {tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        <Tabs defaultValue="standings">
-          <TabsList className="mb-6">
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          </TabsList>
-
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <TabsContent value="standings">
             <StandingsTable teams={teams} legs={legs} matches={matches} rules={tournament.rules ?? DEFAULT_RULES} />
           </TabsContent>
 
           <TabsContent value="schedule">
-            <ScheduleView legs={legs} matches={matches} />
+            <ScheduleView legs={legs} matches={matches} scoreUnit={tournament.rules?.score_unit ?? 'points'} />
           </TabsContent>
-        </Tabs>
-      </main>
+        </main>
+
+        <Footer color="green" />
+      </Tabs>
     </div>
   )
 }
