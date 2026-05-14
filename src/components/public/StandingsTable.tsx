@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Team, Leg, MatchWithTeams } from '@/types'
+import type { Team, Leg, MatchWithTeams, TournamentRules } from '@/types'
+import { DEFAULT_RULES } from '@/types'
 import { computeStandings } from '@/utils/standings'
 import { cn } from '@/lib/utils'
 
@@ -7,16 +8,17 @@ interface Props {
   teams: Team[]
   legs: Leg[]
   matches: MatchWithTeams[]
+  rules?: TournamentRules
 }
 
-export default function StandingsTable({ teams, legs, matches }: Props) {
+export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_RULES }: Props) {
   const [activeLeg, setActiveLeg] = useState<string>('all')
 
   const filteredMatches = activeLeg === 'all'
     ? matches
     : matches.filter(m => m.leg_id === activeLeg)
 
-  const standings = computeStandings(teams, filteredMatches)
+  const standings = computeStandings(teams, filteredMatches, rules)
 
   if (teams.length === 0) {
     return <p className="text-sm text-slate-500 text-center py-8">No teams in this tournament yet.</p>

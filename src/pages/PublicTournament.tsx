@@ -68,7 +68,7 @@ export default function PublicTournament() {
           </TabsList>
 
           <TabsContent value="standings">
-            <StandingsTable teams={teams} legs={legs} matches={matches} />
+            <StandingsTable teams={teams} legs={legs} matches={matches} rules={tournament.rules} />
           </TabsContent>
 
           <TabsContent value="schedule">

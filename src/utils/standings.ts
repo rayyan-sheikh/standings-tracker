@@ -1,6 +1,11 @@
-import type { MatchWithTeams, Standing, Team } from '@/types'
+import type { MatchWithTeams, Standing, Team, TournamentRules } from '@/types'
+import { DEFAULT_RULES } from '@/types'
 
-export function computeStandings(teams: Team[], matches: MatchWithTeams[]): Standing[] {
+export function computeStandings(
+  teams: Team[],
+  matches: MatchWithTeams[],
+  rules: TournamentRules = DEFAULT_RULES
+): Standing[] {
   const map = new Map<string, Standing>()
 
   for (const team of teams) {
@@ -25,11 +30,14 @@ export function computeStandings(teams: Team[], matches: MatchWithTeams[]): Stan
     away.goals_against += m.home_score
 
     if (m.home_score > m.away_score) {
-      home.won++; home.points += 3; away.lost++
+      home.won++; home.points += rules.points_win
+      away.lost++; away.points += rules.points_loss
     } else if (m.home_score < m.away_score) {
-      away.won++; away.points += 3; home.lost++
+      away.won++; away.points += rules.points_win
+      home.lost++; home.points += rules.points_loss
     } else {
-      home.drawn++; home.points++; away.drawn++; away.points++
+      home.drawn++; home.points += rules.points_draw
+      away.drawn++; away.points += rules.points_draw
     }
   }
 

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import type { Tournament, Team, Leg, MatchWithTeams } from '@/types'
+import type { Tournament, Team, Leg, MatchWithTeams, TournamentRules } from '@/types'
+import { DEFAULT_RULES } from '@/types'
 import { generateRoundRobin } from '@/lib/roundRobin'
 import TeamManager from '@/components/admin/TeamManager'
 import LegManager from '@/components/admin/LegManager'
 import MatchCard from '@/components/admin/MatchCard'
 import QRCodeModal from '@/components/admin/QRCodeModal'
+import RulesEditor from '@/components/admin/RulesEditor'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Trophy, ArrowLeft, QrCode } from 'lucide-react'
@@ -65,10 +67,13 @@ export default function TournamentAdmin() {
     fetchAll(id)
   }
 
-  async function onMatchUpdate() {
-    if (id) fetchAll(id)
+  async function saveRules(rules: TournamentRules) {
+    if (!id) return
+    await supabase.from('tournaments').update({ rules }).eq('id', id)
+    setTournament(t => t ? { ...t, rules } : t)
   }
 
+  const rules: TournamentRules = tournament?.rules ?? DEFAULT_RULES
   const publicUrl = `${window.location.origin}/t/${id}`
   const displayedMatches = activeLeg === 'all'
     ? matches
@@ -103,6 +108,7 @@ export default function TournamentAdmin() {
           <TabsList className="mb-6">
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="schedule">Schedule &amp; Results</TabsTrigger>
+            <TabsTrigger value="rules">Rules</TabsTrigger>
           </TabsList>
 
           <TabsContent value="teams">
@@ -129,7 +135,7 @@ export default function TournamentAdmin() {
                     </p>
                     <div className="space-y-2">
                       {roundMatches.map(m => (
-                        <MatchCard key={m.id} match={m} onUpdate={onMatchUpdate} />
+                        <MatchCard key={m.id} match={m} maxScore={rules.max_score} onUpdate={() => fetchAll(id!)} />
                       ))}
                     </div>
                   </div>
@@ -145,6 +151,10 @@ export default function TournamentAdmin() {
                 </p>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="rules">
+            <RulesEditor rules={rules} onSave={saveRules} />
           </TabsContent>
         </Tabs>
       </main>

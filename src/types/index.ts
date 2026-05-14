@@ -1,7 +1,22 @@
+export interface TournamentRules {
+  points_win: number
+  points_draw: number
+  points_loss: number
+  max_score: number
+}
+
+export const DEFAULT_RULES: TournamentRules = {
+  points_win: 3,
+  points_draw: 1,
+  points_loss: 0,
+  max_score: 99,
+}
+
 export interface Tournament {
   id: string
   name: string
   description: string | null
+  rules: TournamentRules
   created_at: string
 }
 
