@@ -62,8 +62,6 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
               <th className="text-center px-3 py-3 font-medium text-slate-500">W</th>
               <th className="text-center px-3 py-3 font-medium text-slate-500">D</th>
               <th className="text-center px-3 py-3 font-medium text-slate-500">L</th>
-              <th className="text-center px-3 py-3 font-medium text-slate-500">GF</th>
-              <th className="text-center px-3 py-3 font-medium text-slate-500">GA</th>
               <th className="text-center px-3 py-3 font-medium text-slate-500">GD</th>
               <th className="text-center px-3 py-3 font-medium text-slate-900 font-semibold">Pts</th>
             </tr>
@@ -77,8 +75,6 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
                 <td className="px-3 py-3 text-center text-slate-600">{s.won}</td>
                 <td className="px-3 py-3 text-center text-slate-600">{s.drawn}</td>
                 <td className="px-3 py-3 text-center text-slate-600">{s.lost}</td>
-                <td className="px-3 py-3 text-center text-slate-600">{s.goals_for}</td>
-                <td className="px-3 py-3 text-center text-slate-600">{s.goals_against}</td>
                 <td className="px-3 py-3 text-center text-slate-600">
                   {s.goal_difference > 0 ? `+${s.goal_difference}` : s.goal_difference}
                 </td>
