@@ -11,6 +11,12 @@ interface Props {
   rules?: TournamentRules
 }
 
+const MEDAL = [
+  { color: '#FFD700', label: '1st' },
+  { color: '#C0C0C0', label: '2nd' },
+  { color: '#CD7F32', label: '3rd' },
+]
+
 export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_RULES }: Props) {
   const [activeLeg, setActiveLeg] = useState<string>('all')
 
@@ -56,7 +62,7 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-slate-500 w-6">#</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-500 w-10">#</th>
               <th className="text-left px-4 py-3 font-medium text-slate-500">Team</th>
               <th className="text-center px-3 py-3 font-medium text-slate-500">P</th>
               <th className="text-center px-3 py-3 font-medium text-slate-500">W</th>
@@ -67,20 +73,39 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {standings.map((s, i) => (
-              <tr key={s.team.id} className="bg-white hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
-                <td className="px-4 py-3 font-medium">{s.team.name}</td>
-                <td className="px-3 py-3 text-center text-slate-600">{s.played}</td>
-                <td className="px-3 py-3 text-center text-slate-600">{s.won}</td>
-                <td className="px-3 py-3 text-center text-slate-600">{s.drawn}</td>
-                <td className="px-3 py-3 text-center text-slate-600">{s.lost}</td>
-                <td className="px-3 py-3 text-center text-slate-600">
-                  {s.goal_difference > 0 ? `+${s.goal_difference}` : s.goal_difference}
-                </td>
-                <td className="px-3 py-3 text-center font-bold">{s.points}</td>
-              </tr>
-            ))}
+            {standings.map((s, i) => {
+              const medal = MEDAL[i]
+              return (
+                <tr key={s.team.id} className="bg-white hover:bg-slate-50 transition-colors">
+                  <td className="relative px-4 py-3 text-slate-400 text-xs overflow-hidden">
+                    {medal && (
+                      <span
+                        aria-label={medal.label}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: 0,
+                          height: 0,
+                          borderTop: `18px solid ${medal.color}`,
+                          borderRight: '18px solid transparent',
+                        }}
+                      />
+                    )}
+                    {i + 1}
+                  </td>
+                  <td className="px-4 py-3 font-medium">{s.team.name}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">{s.played}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">{s.won}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">{s.drawn}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">{s.lost}</td>
+                  <td className="px-3 py-3 text-center text-slate-600">
+                    {s.goal_difference > 0 ? `+${s.goal_difference}` : s.goal_difference}
+                  </td>
+                  <td className="px-3 py-3 text-center font-bold">{s.points}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

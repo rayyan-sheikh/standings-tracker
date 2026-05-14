@@ -1,5 +1,5 @@
 import type { Leg, MatchWithTeams } from '@/types'
-import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface Props {
   legs: Leg[]
@@ -32,19 +32,53 @@ export default function ScheduleView({ legs, matches }: Props) {
               {leg?.name ?? ''} · Round {round}
             </p>
             <div className="space-y-2">
-              {roundMatches.map(m => (
-                <div key={m.id} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
-                  <span className="flex-1 text-right font-medium text-sm">{m.home_team.name}</span>
-                  {m.status === 'completed' ? (
-                    <Badge variant="outline" className="font-mono px-3 py-1 shrink-0">
-                      {m.home_score} – {m.away_score}
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-xs shrink-0">vs</Badge>
-                  )}
-                  <span className="flex-1 font-medium text-sm">{m.away_team.name}</span>
-                </div>
-              ))}
+              {roundMatches.map(m => {
+                const done = m.status === 'completed' && m.home_score !== null && m.away_score !== null
+                const homeWon = done && m.home_score! > m.away_score!
+                const awayWon = done && m.away_score! > m.home_score!
+                const isDraw = done && m.home_score === m.away_score
+
+                return (
+                  <div key={m.id} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+                    <span className={cn(
+                      'flex-1 text-right text-sm',
+                      homeWon ? 'font-bold text-slate-900' : 'font-medium text-slate-500'
+                    )}>
+                      {m.home_team.name}
+                    </span>
+
+                    {done ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={cn(
+                          'text-base font-bold tabular-nums w-5 text-right',
+                          homeWon ? 'text-slate-900' : 'text-slate-400'
+                        )}>
+                          {m.home_score}
+                        </span>
+                        <span className="text-slate-300 font-medium px-0.5">–</span>
+                        <span className={cn(
+                          'text-base font-bold tabular-nums w-5 text-left',
+                          awayWon ? 'text-slate-900' : 'text-slate-400'
+                        )}>
+                          {m.away_score}
+                        </span>
+                        {isDraw && (
+                          <span className="ml-1 text-xs text-slate-400 font-normal">D</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-300 shrink-0 px-2">vs</span>
+                    )}
+
+                    <span className={cn(
+                      'flex-1 text-sm',
+                      awayWon ? 'font-bold text-slate-900' : 'font-medium text-slate-500'
+                    )}>
+                      {m.away_team.name}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )
