@@ -78,12 +78,6 @@ export default function TournamentAdmin() {
   const publicUrl = `${window.location.origin}/t/${id}`
   const displayedMatches = activeLeg === 'all' ? matches : matches.filter(m => m.leg_id === activeLeg)
 
-  const matchesByRound = displayedMatches.reduce((acc, m) => {
-    const key = `${m.leg_id}-${m.round_number}`
-    if (!acc[key]) acc[key] = []
-    acc[key].push(m)
-    return acc
-  }, {} as Record<string, MatchWithTeams[]>)
 
   if (!tournament) return <div className="p-8 text-zinc-500">Loading…</div>
 

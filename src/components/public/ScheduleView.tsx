@@ -38,8 +38,6 @@ function TeamRow({ team, score, won, done }: {
 }
 
 export default function ScheduleView({ legs, matches, scoreUnit = 'points' }: Props) {
-  const legMap = new Map(legs.map(l => [l.id, l]))
-
   // Sort legs by leg_number, then matches within each leg by round then insertion
   const sortedLegs = [...legs].sort((a, b) => a.leg_number - b.leg_number)
 

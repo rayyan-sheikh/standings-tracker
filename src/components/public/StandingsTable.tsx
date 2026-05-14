@@ -27,11 +27,6 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
     return <p className="text-sm text-zinc-600 text-center py-8">No teams in this tournament yet.</p>
   }
 
-  function legLabel(id: string) {
-    if (id === 'all') return 'Combined'
-    return legs.find(l => l.id === id)?.name ?? id
-  }
-
   return (
     <div>
       {legs.length > 1 && (
