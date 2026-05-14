@@ -9,6 +9,7 @@ import LegManager from '@/components/admin/LegManager'
 import MatchCard from '@/components/admin/MatchCard'
 import QRCodeModal from '@/components/admin/QRCodeModal'
 import RulesEditor from '@/components/admin/RulesEditor'
+import StandingsTable from '@/components/public/StandingsTable'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Trophy, ArrowLeft, QrCode } from 'lucide-react'
@@ -108,6 +109,7 @@ export default function TournamentAdmin() {
           <TabsList className="mb-6">
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="schedule">Schedule &amp; Results</TabsTrigger>
+            <TabsTrigger value="standings">Standings</TabsTrigger>
             <TabsTrigger value="rules">Rules</TabsTrigger>
           </TabsList>
 
@@ -151,6 +153,10 @@ export default function TournamentAdmin() {
                 </p>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="standings">
+            <StandingsTable teams={teams} legs={legs} matches={matches} rules={rules} />
           </TabsContent>
 
           <TabsContent value="rules">

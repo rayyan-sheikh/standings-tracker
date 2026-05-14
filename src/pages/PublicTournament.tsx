@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import type { Tournament, Team, Leg, MatchWithTeams } from '@/types'
+import { DEFAULT_RULES } from '@/types'
 import ScheduleView from '@/components/public/ScheduleView'
 import StandingsTable from '@/components/public/StandingsTable'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -68,7 +69,7 @@ export default function PublicTournament() {
           </TabsList>
 
           <TabsContent value="standings">
-            <StandingsTable teams={teams} legs={legs} matches={matches} rules={tournament.rules} />
+            <StandingsTable teams={teams} legs={legs} matches={matches} rules={tournament.rules ?? DEFAULT_RULES} />
           </TabsContent>
 
           <TabsContent value="schedule">
