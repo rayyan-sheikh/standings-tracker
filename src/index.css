@@ -13,5 +13,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+input, select, textarea {
+  font-size: 16px !important;
+}
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

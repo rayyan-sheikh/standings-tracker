@@ -1,23 +1,30 @@
 import { useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
-import type { Team, Leg } from '@/shared/types'
+import type { Team, Leg, ParticipantType } from '@/shared/types'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Badge } from '@/shared/ui/badge'
-import { Plus, Trash2, Shuffle, Pencil, Check, X } from 'lucide-react'
+import { Plus, Trash2, Shuffle, Pencil, Check, X, AlertTriangle, Info } from 'lucide-react'
 
 interface Props {
   tournamentId: string
   teams: Team[]
   legs: Leg[]
+  participantType: ParticipantType
+  hasPlayedMatches: boolean
   onTeamsChange: () => void
   onAddLeg: () => Promise<void>
+  onResetMatches: () => Promise<void>
 }
 
-export default function TeamManager({ tournamentId, teams, legs, onTeamsChange, onAddLeg }: Props) {
+export default function TeamManager({ tournamentId, teams, legs, participantType, hasPlayedMatches, onTeamsChange, onAddLeg, onResetMatches }: Props) {
+  const label = participantType === 'player' ? 'player' : 'team'
+  const labelPlural = participantType === 'player' ? 'players' : 'teams'
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [generatingLeg, setGeneratingLeg] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
 
@@ -25,7 +32,9 @@ export default function TeamManager({ tournamentId, teams, legs, onTeamsChange, 
     e.preventDefault()
     if (!newName.trim()) return
     setAdding(true)
-    await supabase.from('teams').insert({ tournament_id: tournamentId, name: newName.trim() })
+    const names = newName.split(',').map(n => n.trim()).filter(Boolean)
+    const rows = names.map(name => ({ tournament_id: tournamentId, name }))
+    await supabase.from('teams').insert(rows)
     setNewName(''); setAdding(false); onTeamsChange()
   }
 
@@ -50,15 +59,57 @@ export default function TeamManager({ tournamentId, teams, legs, onTeamsChange, 
 
   return (
     <div className="space-y-6">
-      <form onSubmit={addTeam} className="flex gap-2">
-        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Team name" className="flex-1" />
-        <Button type="submit" variant="blue" disabled={adding || !newName.trim()}>
-          <Plus className="h-4 w-4 mr-1" /> Add team
-        </Button>
-      </form>
+      {hasPlayedMatches ? (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-900/50 bg-amber-950/20 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-400">Cannot add more {labelPlural}</p>
+            <p className="text-xs text-amber-700 mt-0.5 mb-3">Matches already exist for this tournament. To add new {labelPlural}, you will need to reset all results first.</p>
+            {confirmReset ? (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-red-400 font-medium">All results will be lost. Sure?</p>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={resetting}
+                  onClick={async () => {
+                    setResetting(true)
+                    await onResetMatches()
+                    setConfirmReset(false)
+                    setResetting(false)
+                  }}
+                >
+                  {resetting ? 'Resetting…' : 'Yes, reset all'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Cancel</Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setConfirmReset(true)}>
+                Reset all results
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+        <div className="flex items-start gap-3 rounded-xl border border-blue-900/50 bg-blue-950/20 px-4 py-3">
+          <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-300">
+            Add one at a time or multiple using comma-separated names —{' '}
+            <span className="text-blue-500">e.g. Arsenal, Chelsea, Liverpool</span>
+          </p>
+        </div>
+        <form onSubmit={addTeam} className="flex gap-2">
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder={`${label === 'team' ? 'Team' : 'Player'} name, or comma separated`} className="flex-1" />
+          <Button type="submit" variant="blue" disabled={adding || !newName.trim()}>
+            <Plus className="h-4 w-4 mr-1" /> Add {newName.split(',').filter(n => n.trim()).length > 1 ? labelPlural : label}
+          </Button>
+        </form>
+        </div>
+      )}
 
       {teams.length === 0 ? (
-        <p className="text-sm text-zinc-600 text-center py-6">No teams yet.</p>
+        <p className="text-sm text-zinc-600 text-center py-6">No {labelPlural} yet.</p>
       ) : (
         <ul className="space-y-2">
           {teams.map(t => (
@@ -95,11 +146,11 @@ export default function TeamManager({ tournamentId, teams, legs, onTeamsChange, 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-zinc-300">Legs</p>
-            <p className="text-xs text-zinc-600">{legs.length} leg{legs.length !== 1 ? 's' : ''} · {teams.length} team{teams.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-zinc-600">{legs.length} leg{legs.length !== 1 ? 's' : ''} · {teams.length} {teams.length !== 1 ? labelPlural : label}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleAddLeg}
             disabled={teams.length < 2 || generatingLeg}
-            title={teams.length < 2 ? 'Add at least 2 teams first' : ''}>
+            title={teams.length < 2 ? `Add at least 2 ${labelPlural} first` : ''}>
             <Shuffle className="h-4 w-4 mr-1" />
             {generatingLeg ? 'Generating…' : `Add Leg ${legs.length + 1}`}
           </Button>

@@ -51,22 +51,25 @@ SelectContent.displayName = SelectPrimitive.Content.displayName
 
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & { description?: string }
+>(({ className, children, description, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-8 pr-3 text-sm text-zinc-300 outline-none focus:bg-zinc-800 focus:text-zinc-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex w-full cursor-pointer select-none items-start rounded-md py-2 pl-8 pr-3 text-sm text-zinc-300 outline-none focus:bg-zinc-800 focus:text-zinc-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-4 w-4 items-center justify-center">
+    <span className="absolute left-2 flex h-4 w-4 items-center justify-center mt-0.5">
       <SelectPrimitive.ItemIndicator>
         <Check className="h-3.5 w-3.5 text-green-400" />
       </SelectPrimitive.ItemIndicator>
     </span>
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    <div>
+      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {description && <p className="text-xs text-zinc-500 mt-0.5">{description}</p>}
+    </div>
   </SelectPrimitive.Item>
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName

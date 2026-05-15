@@ -10,14 +10,31 @@ export const DEFAULT_RULES: TournamentRules = {
   points_win: 3,
   points_draw: 1,
   points_loss: 0,
-  max_score: 99,
+  max_score: 0,
   score_unit: 'points',
 }
+
+export type TournamentType = 'league'
+
+export const TOURNAMENT_TYPES: { value: TournamentType; label: string; description: string }[] = [
+  { value: 'league', label: 'League', description: 'Every team plays each other. Points table decides the winner.' },
+]
+
+export type ParticipantType = 'team' | 'player'
+
+export type SportType = 'custom'
+
+export const SPORTS: { value: SportType; label: string; description: string }[] = [
+  { value: 'custom', label: 'Custom', description: 'Define your own scoring rules' },
+]
 
 export interface Tournament {
   id: string
   name: string
   description: string | null
+  type: TournamentType
+  sport: SportType
+  participant_type: ParticipantType
   rules: TournamentRules
   created_at: string
 }

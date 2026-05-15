@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import type { Tournament, Team, Leg, MatchWithTeams, TournamentRules } from '@/shared/types'
+import type { Tournament, Team, Leg, MatchWithTeams, TournamentRules, ParticipantType } from '@/shared/types'
 import { DEFAULT_RULES } from '@/shared/types'
 import { generateRoundRobin } from '@/shared/lib/roundRobin'
 import TeamManager from '@/features/admin/components/TeamManager'
@@ -23,6 +23,7 @@ export default function TournamentAdmin() {
   const [legs, setLegs] = useState<Leg[]>([])
   const [matches, setMatches] = useState<MatchWithTeams[]>([])
   const [activeLeg, setActiveLeg] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState('teams')
   const [showQR, setShowQR] = useState(false)
 
   useEffect(() => { if (id) fetchAll(id) }, [id])
@@ -64,10 +65,21 @@ export default function TournamentAdmin() {
     fetchAll(id)
   }
 
-  async function saveRules(rules: TournamentRules) {
+  async function resetMatches() {
     if (!id) return
-    await supabase.from('tournaments').update({ rules }).eq('id', id)
-    setTournament(t => t ? { ...t, rules } : t)
+    const legIds = legs.map(l => l.id)
+    if (legIds.length === 0) return
+    await supabase.from('matches')
+      .update({ home_score: null, away_score: null, status: 'scheduled' })
+      .in('leg_id', legIds)
+    fetchAll(id)
+  }
+
+  async function saveRules(rules: TournamentRules, participantType: ParticipantType) {
+    if (!id) return
+    await supabase.from('tournaments').update({ rules, participant_type: participantType }).eq('id', id)
+    setTournament(t => t ? { ...t, rules, participant_type: participantType } : t)
+    setActiveTab('standings')
   }
 
   const rules: TournamentRules = tournament?.rules ?? DEFAULT_RULES
@@ -97,7 +109,7 @@ export default function TournamentAdmin() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <Tabs defaultValue="teams">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 overflow-x-auto no-scrollbar flex-nowrap">
             {(['teams', 'schedule', 'standings', 'rules'] as const).map(tab => (
               <TabsTrigger
@@ -105,13 +117,22 @@ export default function TournamentAdmin() {
                 value={tab}
                 className="data-[state=active]:bg-blue-900/50 data-[state=active]:text-blue-300 capitalize"
               >
-                {tab === 'schedule' ? 'Schedule' : tab}
+                {tab === 'schedule' ? 'Schedule' : tab === 'teams' ? 'Participants' : tab}
               </TabsTrigger>
             ))}
           </TabsList>
 
           <TabsContent value="teams">
-            <TeamManager tournamentId={id!} teams={teams} legs={legs} onTeamsChange={() => fetchAll(id!)} onAddLeg={addLeg} />
+            <TeamManager
+              tournamentId={id!}
+              teams={teams}
+              legs={legs}
+              participantType={tournament.participant_type ?? 'team'}
+              hasPlayedMatches={matches.some(m => m.status === 'completed')}
+              onTeamsChange={() => fetchAll(id!)}
+              onAddLeg={addLeg}
+              onResetMatches={resetMatches}
+            />
           </TabsContent>
 
           <TabsContent value="schedule">
@@ -168,7 +189,11 @@ export default function TournamentAdmin() {
           </TabsContent>
 
           <TabsContent value="rules">
-            <RulesEditor rules={rules} onSave={saveRules} />
+            <RulesEditor
+              rules={rules}
+              participantType={tournament.participant_type ?? 'team'}
+              onSave={saveRules}
+            />
           </TabsContent>
         </Tabs>
       </main>
