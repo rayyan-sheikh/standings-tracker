@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Tournament, Team, Leg, MatchWithTeams } from '@/shared/types'
@@ -6,6 +6,7 @@ import { DEFAULT_RULES } from '@/shared/types'
 import ScheduleView from '@/features/viewer/components/ScheduleView'
 import StandingsTable from '@/features/viewer/components/StandingsTable'
 import StatsView from '@/features/viewer/components/StatsView'
+import { useRealtimeTournament } from '@/features/viewer/hooks/useRealtimeTournament'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import { Swords } from 'lucide-react'
 import Logo from '@/shared/ui/logo'
@@ -19,9 +20,7 @@ export default function PublicTournament() {
   const [matches, setMatches] = useState<MatchWithTeams[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { if (id) fetchAll(id) }, [id])
-
-  async function fetchAll(tid: string) {
+  const fetchAll = useCallback(async (tid: string) => {
     const [{ data: t }, { data: te }, { data: l }] = await Promise.all([
       supabase.from('tournaments').select('*').eq('id', tid).single(),
       supabase.from('teams').select('*').eq('tournament_id', tid).order('created_at'),
@@ -41,7 +40,15 @@ export default function PublicTournament() {
       }
     }
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => { if (id) fetchAll(id) }, [id, fetchAll])
+
+  useRealtimeTournament({
+    tournamentId: id ?? '',
+    legIds: legs.map(l => l.id),
+    onUpdate: useCallback(() => { if (id) fetchAll(id) }, [id, fetchAll]),
+  })
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-500">Loading…</div>
@@ -57,6 +64,10 @@ export default function PublicTournament() {
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-3">
               <Logo color="green" />
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-green-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                Live
+              </span>
             </div>
             <div className="flex items-center gap-2 mb-3">
               <Swords className="h-4 w-4 text-green-400 shrink-0" />
@@ -88,7 +99,6 @@ export default function PublicTournament() {
           <TabsContent value="schedule">
             <ScheduleView legs={legs} matches={matches} scoreUnit={tournament.rules?.score_unit || 'points'} isDoubles={tournament.participant_type === 'doubles'} />
           </TabsContent>
-
           <TabsContent value="stats">
             <StatsView
               sport={tournament.sport ?? 'custom'}

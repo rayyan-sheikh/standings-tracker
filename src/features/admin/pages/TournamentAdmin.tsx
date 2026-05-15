@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Tournament, Team, Leg, MatchWithTeams, TournamentRules, ParticipantType } from '@/shared/types'
@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import { Button } from '@/shared/ui/button'
 import Logo from '@/shared/ui/logo'
 import Footer from '@/shared/ui/footer'
+import { useRealtimeTournament } from '@/features/viewer/hooks/useRealtimeTournament'
 import { ArrowLeft, QrCode } from 'lucide-react'
 
 export default function TournamentAdmin() {
@@ -26,7 +27,15 @@ export default function TournamentAdmin() {
   const [activeTab, setActiveTab] = useState('teams')
   const [showQR, setShowQR] = useState(false)
 
+  const fetchAllCb = useCallback(() => { if (id) fetchAll(id) }, [id])
+
   useEffect(() => { if (id) fetchAll(id) }, [id])
+
+  useRealtimeTournament({
+    tournamentId: id ?? '',
+    legIds: legs.map(l => l.id),
+    onUpdate: fetchAllCb,
+  })
 
   async function fetchAll(tid: string) {
     const [{ data: t }, { data: te }, { data: l }] = await Promise.all([
