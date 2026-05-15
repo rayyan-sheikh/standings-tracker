@@ -5,6 +5,7 @@ import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { Pencil, Minus, Plus, Check, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Props {
   match: MatchWithTeams
@@ -27,12 +28,14 @@ export default function MatchCard({ match, matchNumber, maxScore, onUpdate }: Pr
     setSaving(true)
     await supabase.from('matches').update({ home_score: homeScore, away_score: awayScore, status: 'completed' }).eq('id', match.id)
     setSaving(false); setOpen(false); onUpdate()
+    toast.success('Result saved')
   }
 
   async function resetResult() {
     setSaving(true)
     await supabase.from('matches').update({ home_score: null, away_score: null, status: 'scheduled' }).eq('id', match.id)
     setSaving(false); setOpen(false); onUpdate()
+    toast.success('Result reset')
   }
 
   const isCompleted = match.status === 'completed'

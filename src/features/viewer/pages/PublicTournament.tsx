@@ -5,6 +5,7 @@ import type { Tournament, Team, Leg, MatchWithTeams } from '@/shared/types'
 import { DEFAULT_RULES } from '@/shared/types'
 import ScheduleView from '@/features/viewer/components/ScheduleView'
 import StandingsTable from '@/features/viewer/components/StandingsTable'
+import StatsView from '@/features/viewer/components/StatsView'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import { Swords } from 'lucide-react'
 import Logo from '@/shared/ui/logo'
@@ -35,7 +36,7 @@ export default function PublicTournament() {
           .from('matches')
           .select('*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*)')
           .in('leg_id', l.map((x: Leg) => x.id))
-          .order('round_number')
+          .order('id')
         if (m) setMatches(m as MatchWithTeams[])
       }
     }
@@ -67,7 +68,7 @@ export default function PublicTournament() {
               </div>
             </div>
             <TabsList className="bg-transparent p-0 h-auto gap-0 rounded-none w-full justify-start border-b border-zinc-800 -mb-px">
-              {(['standings', 'schedule'] as const).map(tab => (
+              {(['standings', 'schedule', 'stats'] as const).map(tab => (
                 <TabsTrigger
                   key={tab}
                   value={tab}
@@ -85,7 +86,17 @@ export default function PublicTournament() {
             <StandingsTable teams={teams} legs={legs} matches={matches} rules={tournament.rules ?? DEFAULT_RULES} />
           </TabsContent>
           <TabsContent value="schedule">
-            <ScheduleView legs={legs} matches={matches} scoreUnit={tournament.rules?.score_unit || 'points'} />
+            <ScheduleView legs={legs} matches={matches} scoreUnit={tournament.rules?.score_unit || 'points'} isDoubles={tournament.participant_type === 'doubles'} />
+          </TabsContent>
+
+          <TabsContent value="stats">
+            <StatsView
+              sport={tournament.sport ?? 'custom'}
+              teams={teams}
+              matches={matches}
+              rules={tournament.rules ?? DEFAULT_RULES}
+              scoreUnit={tournament.rules?.score_unit || 'point'}
+            />
           </TabsContent>
         </main>
 

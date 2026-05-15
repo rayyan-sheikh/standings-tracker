@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Badge } from '@/shared/ui/badge'
 import { Plus, Trash2, Shuffle, Pencil, Check, X, AlertTriangle, Info } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Props {
   tournamentId: string
@@ -18,43 +19,75 @@ interface Props {
 }
 
 export default function TeamManager({ tournamentId, teams, legs, participantType, hasPlayedMatches, onTeamsChange, onAddLeg, onResetMatches }: Props) {
-  const label = participantType === 'player' ? 'player' : 'team'
-  const labelPlural = participantType === 'player' ? 'players' : 'teams'
+  const isDoubles = participantType === 'doubles'
+  const label = participantType === 'singles' ? 'player' : isDoubles ? 'pair' : 'team'
+  const labelPlural = participantType === 'singles' ? 'players' : isDoubles ? 'pairs' : 'teams'
   const [newName, setNewName] = useState('')
+  const [player1, setPlayer1] = useState('')
+  const [player2, setPlayer2] = useState('')
   const [adding, setAdding] = useState(false)
   const [generatingLeg, setGeneratingLeg] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [editP1, setEditP1] = useState('')
+  const [editP2, setEditP2] = useState('')
 
   async function addTeam(e: React.FormEvent) {
     e.preventDefault()
-    if (!newName.trim()) return
     setAdding(true)
-    const names = newName.split(',').map(n => n.trim()).filter(Boolean)
-    const rows = names.map(name => ({ tournament_id: tournamentId, name }))
-    await supabase.from('teams').insert(rows)
-    setNewName(''); setAdding(false); onTeamsChange()
+    if (isDoubles) {
+      if (!player1.trim() || !player2.trim()) { setAdding(false); return }
+      await supabase.from('teams').insert({ tournament_id: tournamentId, name: `${player1.trim()} / ${player2.trim()}` })
+      setPlayer1(''); setPlayer2('')
+    } else {
+      if (!newName.trim()) { setAdding(false); return }
+      const names = newName.split(',').map(n => n.trim()).filter(Boolean)
+      const rows = names.map(name => ({ tournament_id: tournamentId, name }))
+      await supabase.from('teams').insert(rows)
+      setNewName('')
+    }
+    setAdding(false); onTeamsChange()
+    const count = isDoubles ? 1 : newName.split(',').filter(n => n.trim()).length
+    toast.success(count > 1 ? `${count} ${labelPlural} added` : `${label.charAt(0).toUpperCase() + label.slice(1)} added`)
   }
 
   async function removeTeam(id: string) {
     await supabase.from('teams').delete().eq('id', id)
     onTeamsChange()
+    toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} removed`)
   }
 
-  function startEdit(team: Team) { setEditingId(team.id); setEditName(team.name) }
-  function cancelEdit() { setEditingId(null); setEditName('') }
+  function startEdit(team: Team) {
+    setEditingId(team.id)
+    if (isDoubles && team.name.includes(' / ')) {
+      const [p1, p2] = team.name.split(' / ')
+      setEditP1(p1.trim()); setEditP2(p2.trim()); setEditName('')
+    } else {
+      setEditName(team.name); setEditP1(''); setEditP2('')
+    }
+  }
+  function cancelEdit() { setEditingId(null); setEditName(''); setEditP1(''); setEditP2('') }
 
   async function saveEdit(id: string) {
-    if (!editName.trim()) return
-    await supabase.from('teams').update({ name: editName.trim() }).eq('id', id)
+    let name = ''
+    if (isDoubles) {
+      if (!editP1.trim() || !editP2.trim()) return
+      name = `${editP1.trim()} / ${editP2.trim()}`
+    } else {
+      if (!editName.trim()) return
+      name = editName.trim()
+    }
+    await supabase.from('teams').update({ name }).eq('id', id)
     setEditingId(null); onTeamsChange()
+    toast.success('Name updated')
   }
 
   async function handleAddLeg() {
     if (teams.length < 2) return
     setGeneratingLeg(true); await onAddLeg(); setGeneratingLeg(false)
+    toast.success('Leg generated')
   }
 
   return (
@@ -77,6 +110,7 @@ export default function TeamManager({ tournamentId, teams, legs, participantType
                     await onResetMatches()
                     setConfirmReset(false)
                     setResetting(false)
+                    toast.success('All results reset')
                   }}
                 >
                   {resetting ? 'Resetting…' : 'Yes, reset all'}
@@ -92,19 +126,36 @@ export default function TeamManager({ tournamentId, teams, legs, participantType
         </div>
       ) : (
         <div className="space-y-2">
-        <div className="flex items-start gap-3 rounded-xl border border-blue-900/50 bg-blue-950/20 px-4 py-3">
-          <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-300">
-            Add one at a time or multiple using comma-separated names —{' '}
-            <span className="text-blue-500">e.g. Arsenal, Chelsea, Liverpool</span>
-          </p>
-        </div>
-        <form onSubmit={addTeam} className="flex gap-2">
-          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder={`${label === 'team' ? 'Team' : 'Player'} name, or comma separated`} className="flex-1" />
-          <Button type="submit" variant="blue" disabled={adding || !newName.trim()}>
-            <Plus className="h-4 w-4 mr-1" /> Add {newName.split(',').filter(n => n.trim()).length > 1 ? labelPlural : label}
-          </Button>
-        </form>
+        {!isDoubles && (
+          <div className="flex items-start gap-3 rounded-xl border border-blue-900/50 bg-blue-950/20 px-4 py-3">
+            <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-300">
+              Add one at a time or multiple using comma-separated names —{' '}
+              <span className="text-blue-500">e.g. Arsenal, Chelsea, Liverpool</span>
+            </p>
+          </div>
+        )}
+        {isDoubles ? (
+          <form onSubmit={addTeam} className="space-y-2">
+            <div className="flex gap-2">
+              <Input value={player1} onChange={e => setPlayer1(e.target.value)} placeholder="Player 1 name" className="flex-1" required />
+              <Input value={player2} onChange={e => setPlayer2(e.target.value)} placeholder="Player 2 name" className="flex-1" required />
+            </div>
+            {player1.trim() && player2.trim() && (
+              <p className="text-xs text-zinc-600">Pair name: <span className="text-zinc-400">{player1.trim()} / {player2.trim()}</span></p>
+            )}
+            <Button type="submit" variant="blue" disabled={adding || !player1.trim() || !player2.trim()} className="w-full">
+              <Plus className="h-4 w-4 mr-1" /> Add pair
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={addTeam} className="flex gap-2">
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder={`${label === 'team' ? 'Team' : 'Player'} name, or comma separated`} className="flex-1" />
+            <Button type="submit" variant="blue" disabled={adding || !newName.trim()}>
+              <Plus className="h-4 w-4 mr-1" /> Add {newName.split(',').filter(n => n.trim()).length > 1 ? labelPlural : label}
+            </Button>
+          </form>
+        )}
         </div>
       )}
 
@@ -115,17 +166,32 @@ export default function TeamManager({ tournamentId, teams, legs, participantType
           {teams.map(t => (
             <li key={t.id} className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5">
               {editingId === t.id ? (
-                <>
-                  <Input value={editName} onChange={e => setEditName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(t.id); if (e.key === 'Escape') cancelEdit() }}
-                    className="flex-1 h-8" autoFocus />
-                  <Button size="icon" variant="blue" className="h-8 w-8 shrink-0" onClick={() => saveEdit(t.id)}>
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={cancelEdit}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </>
+                isDoubles ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <Input value={editP1} onChange={e => setEditP1(e.target.value)} placeholder="Player 1" className="flex-1 h-8" autoFocus />
+                    <span className="text-zinc-600 text-xs shrink-0">/</span>
+                    <Input value={editP2} onChange={e => setEditP2(e.target.value)} placeholder="Player 2" className="flex-1 h-8"
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(t.id); if (e.key === 'Escape') cancelEdit() }} />
+                    <Button size="icon" variant="blue" className="h-8 w-8 shrink-0" onClick={() => saveEdit(t.id)}>
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={cancelEdit}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input value={editName} onChange={e => setEditName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(t.id); if (e.key === 'Escape') cancelEdit() }}
+                      className="flex-1 h-8" autoFocus />
+                    <Button size="icon" variant="blue" className="h-8 w-8 shrink-0" onClick={() => saveEdit(t.id)}>
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={cancelEdit}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )
               ) : (
                 <>
                   <span className="flex-1 font-medium text-zinc-200">{t.name}</span>

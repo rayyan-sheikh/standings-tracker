@@ -20,7 +20,7 @@ export const TOURNAMENT_TYPES: { value: TournamentType; label: string; descripti
   { value: 'league', label: 'League', description: 'Every team plays each other. Points table decides the winner.' },
 ]
 
-export type ParticipantType = 'team' | 'player'
+export type ParticipantType = 'team' | 'singles' | 'doubles'
 
 export type SportType = 'custom'
 

@@ -45,7 +45,7 @@ export default function TournamentAdmin() {
       .from('matches')
       .select('*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*)')
       .in('leg_id', legIds)
-      .order('round_number')
+      .order('id')
     if (data) setMatches(data as MatchWithTeams[])
   }
 

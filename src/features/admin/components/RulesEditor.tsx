@@ -46,7 +46,7 @@ export default function RulesEditor({ rules, participantType, onSave }: Props) {
         <CardHeader><CardTitle>Participants</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2">
-            {(['team', 'player'] as ParticipantType[]).map(p => (
+            {([['singles', 'Singles'], ['doubles', 'Doubles'], ['team', 'Teams']] as [ParticipantType, string][]).map(([p, label]) => (
               <button
                 key={p}
                 type="button"
@@ -57,7 +57,7 @@ export default function RulesEditor({ rules, participantType, onSave }: Props) {
                     : 'border-zinc-700 bg-zinc-800/40 text-zinc-400 hover:border-zinc-600'
                 }`}
               >
-                {p === 'team' ? 'Teams' : 'Players'}
+                {label}
               </button>
             ))}
           </div>

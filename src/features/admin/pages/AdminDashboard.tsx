@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import Logo from '@/shared/ui/logo'
 import Footer from '@/shared/ui/footer'
-import { Plus, LogOut, ChevronRight } from 'lucide-react'
+import { Plus, LogOut, ChevronRight, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function AdminDashboard() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
@@ -25,6 +26,10 @@ export default function AdminDashboard() {
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [showSignOut, setShowSignOut] = useState(false)
+  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null)
+  const [editTournamentName, setEditTournamentName] = useState('')
+  const [deletingTournament, setDeletingTournament] = useState<Tournament | null>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => { fetchTournaments() }, [])
 
@@ -42,6 +47,7 @@ export default function AdminDashboard() {
     setRules({ ...DEFAULT_RULES, max_score: 0, score_unit: '' }); setMaxScoreInput('')
     setShowForm(false); setCreating(false)
     fetchTournaments()
+    toast.success('Tournament created')
   }
 
   function setRule(key: keyof TournamentRules, value: string) {
@@ -53,6 +59,22 @@ export default function AdminDashboard() {
     setShowForm(false)
     setName(''); setDescription(''); setType('league'); setSport('custom'); setParticipantType('team')
     setRules({ ...DEFAULT_RULES, max_score: 0, score_unit: '' }); setMaxScoreInput('')
+  }
+
+  async function updateTournamentName() {
+    if (!editingTournament || !editTournamentName.trim()) return
+    setSaving(true)
+    await supabase.from('tournaments').update({ name: editTournamentName.trim() }).eq('id', editingTournament.id)
+    setSaving(false); setEditingTournament(null); fetchTournaments()
+    toast.success('Tournament name updated')
+  }
+
+  async function deleteTournament() {
+    if (!deletingTournament) return
+    const name = deletingTournament.name
+    await supabase.from('tournaments').delete().eq('id', deletingTournament.id)
+    setDeletingTournament(null); fetchTournaments()
+    toast.success(`"${name}" deleted`)
   }
 
   async function signOut() { await supabase.auth.signOut() }
@@ -79,30 +101,68 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-2">
             {tournaments.map(t => (
-              <Link key={t.id} to={`/admin/tournament/${t.id}`} className="block">
-                <Card className="hover:border-zinc-700 hover:bg-zinc-800/50 transition-colors cursor-pointer">
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="font-medium text-zinc-100">{t.name}</p>
-                      <p className="text-xs text-zinc-600 mt-0.5 capitalize">
-                        {t.sport}
-                        {' · '}
-                        {(t as unknown as { teams: { count: number }[] }).teams?.[0]?.count ?? 0}
-                        {' '}
-                        {t.participant_type === 'player' ? 'players' : 'teams'}
-                        {t.description ? ` · ${t.description}` : ''}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-600" />
-                  </CardContent>
-                </Card>
-              </Link>
+              <Card key={t.id} className="hover:border-zinc-700 transition-colors">
+                <CardContent className="flex items-center justify-between py-4 gap-2">
+                  <Link to={`/admin/tournament/${t.id}`} className="flex-1 min-w-0">
+                    <p className="font-medium text-zinc-100">{t.name}</p>
+                    <p className="text-xs text-zinc-600 mt-0.5 capitalize">
+                      {t.sport}
+                      {' · '}
+                      {t.participant_type === 'singles' ? 'Singles' : t.participant_type === 'doubles' ? 'Doubles' : 'Teams'}
+                      {' · '}
+                      {(t as unknown as { teams: { count: number }[] }).teams?.[0]?.count ?? 0}
+                      {' '}
+                      {t.participant_type === 'singles' ? 'players' : t.participant_type === 'doubles' ? 'pairs' : 'teams'}
+                      {t.description ? ` · ${t.description}` : ''}
+                    </p>
+                  </Link>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingTournament(t); setEditTournamentName(t.name) }}>
+                      <Pencil className="h-3.5 w-3.5 text-zinc-600" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeletingTournament(t)}>
+                      <Trash2 className="h-3.5 w-3.5 text-zinc-600 hover:text-red-400" />
+                    </Button>
+                    <ChevronRight className="h-4 w-4 text-zinc-700 ml-1" />
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
       </main>
 
       <Footer color="blue" />
+
+      {/* Edit tournament name */}
+      <Dialog open={!!editingTournament} onOpenChange={v => !v && setEditingTournament(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Edit tournament name</DialogTitle></DialogHeader>
+          <Input value={editTournamentName} onChange={e => setEditTournamentName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && updateTournamentName()}
+            autoFocus />
+          <div className="flex gap-2 pt-1">
+            <Button variant="blue" className="flex-1" disabled={saving} onClick={updateTournamentName}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+            <Button variant="outline" onClick={() => setEditingTournament(null)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete tournament */}
+      <Dialog open={!!deletingTournament} onOpenChange={v => !v && setDeletingTournament(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete tournament?</DialogTitle></DialogHeader>
+          <p className="text-sm text-zinc-500">
+            <span className="text-zinc-300 font-medium">{deletingTournament?.name}</span> and all its teams, legs and matches will be permanently deleted.
+          </p>
+          <div className="flex gap-2 pt-1">
+            <Button variant="destructive" className="flex-1" onClick={deleteTournament}>Delete</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setDeletingTournament(null)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSignOut} onOpenChange={setShowSignOut}>
         <DialogContent className="max-w-sm">
@@ -135,18 +195,18 @@ export default function AdminDashboard() {
             <div className="space-y-1.5">
               <Label>Participants</Label>
               <div className="grid grid-cols-2 gap-2">
-                {(['team', 'player'] as ParticipantType[]).map(p => (
+                {([['singles', 'Singles'], ['doubles', 'Doubles'], ['team', 'Teams']] as [ParticipantType, string][]).map(([p, label]) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setParticipantType(p)}
-                    className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors capitalize ${
+                    className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
                       participantType === p
                         ? 'border-blue-500/60 bg-blue-900/20 text-blue-300'
                         : 'border-zinc-700 bg-zinc-800/40 text-zinc-400 hover:border-zinc-600'
                     }`}
                   >
-                    {p === 'team' ? 'Teams' : 'Players'}
+                    {label}
                   </button>
                 ))}
               </div>
