@@ -1,6 +1,5 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts'
 import type { Team, MatchWithTeams, TournamentRules } from '@/shared/types'
-import { DEFAULT_RULES } from '@/shared/types'
 import { computeStandings } from '@/shared/utils/standings'
 
 interface Props {
@@ -11,7 +10,6 @@ interface Props {
 }
 
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']
-const BAR_COLORS = ['#4ade80', '#86efac', '#bbf7d0']
 const LINE_COLORS = [
   '#4ade80', '#60a5fa', '#f472b6', '#fb923c',
   '#a78bfa', '#34d399', '#fbbf24', '#38bdf8',
@@ -124,9 +122,10 @@ export default function CustomStats({ teams, matches, rules, scoreUnit }: Props)
                 <Tooltip
                   contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: '#a1a1aa' }}
-                  formatter={(value: number, _: string, { dataKey }: { dataKey: string }) => {
-                    const team = teams.find(t => t.id === dataKey)
-                    return [`${value} pts`, team?.name ?? dataKey]
+                  formatter={(value, _, props) => {
+                    const key = props.dataKey as string
+                    const team = teams.find(t => t.id === key)
+                    return [`${value} pts`, team?.name ?? key]
                   }}
                 />
                 <Legend formatter={(value) => teams.find(t => t.id === value)?.name ?? value}
@@ -153,7 +152,7 @@ export default function CustomStats({ teams, matches, rules, scoreUnit }: Props)
                 cursor={{ fill: '#27272a' }}
                 contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: '#f4f4f5', fontWeight: 600 }}
-                labelFormatter={(_: unknown, payload: { payload?: { name?: string } }[]) => payload?.[0]?.payload?.name ?? ''}
+                labelFormatter={(_: unknown, payload: readonly { payload?: { name?: string } }[]) => payload?.[0]?.payload?.name ?? ''}
               />
               <Bar dataKey="won" name="Won" stackId="a" fill="#4ade80" maxBarSize={22} />
               <Bar dataKey="drawn" name="Drawn" stackId="a" fill="#a1a1aa" maxBarSize={22} />
