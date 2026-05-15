@@ -3,8 +3,8 @@ import { supabase } from '@/shared/lib/supabase'
 import type { Team, Leg, ParticipantType } from '@/shared/types'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
-import { Badge } from '@/shared/ui/badge'
-import { Plus, Trash2, Shuffle, Pencil, Check, X, AlertTriangle, Info } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
+import { Plus, Trash2, Shuffle, Pencil, Check, X, AlertTriangle, Info, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -27,6 +27,8 @@ export default function TeamManager({ tournamentId, teams, legs, participantType
   const [player2, setPlayer2] = useState('')
   const [adding, setAdding] = useState(false)
   const [generatingLeg, setGeneratingLeg] = useState(false)
+  const [deletingLegId, setDeletingLegId] = useState<string | null>(null)
+  const [confirmLeg, setConfirmLeg] = useState<{ id: string; name: string } | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -82,6 +84,14 @@ export default function TeamManager({ tournamentId, teams, legs, participantType
     await supabase.from('teams').update({ name }).eq('id', id)
     setEditingId(null); onTeamsChange()
     toast.success('Name updated')
+  }
+
+  async function deleteLeg(id: string) {
+    setDeletingLegId(id)
+    await supabase.from('legs').delete().eq('id', id)
+    setDeletingLegId(null)
+    onTeamsChange()
+    toast.success('Leg deleted')
   }
 
   async function handleAddLeg() {
@@ -222,13 +232,39 @@ export default function TeamManager({ tournamentId, teams, legs, participantType
           </Button>
         </div>
         {legs.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="mt-3 space-y-1.5">
             {legs.map(l => (
-              <Badge key={l.id} variant="secondary">{l.name ?? `Leg ${l.leg_number}`}</Badge>
+              <div key={l.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+                <span className="text-sm font-medium text-blue-400">{l.name ?? `Leg ${l.leg_number}`}</span>
+                {legs.length > 1 && (
+                  <button
+                    onClick={() => setConfirmLeg({ id: l.id, name: l.name ?? `Leg ${l.leg_number}` })}
+                    disabled={deletingLegId === l.id}
+                    className="text-zinc-700 hover:text-red-400 transition-colors"
+                  >
+                    {deletingLegId === l.id
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Trash2 className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog open={!!confirmLeg} onOpenChange={v => !v && setConfirmLeg(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete {confirmLeg?.name}?</DialogTitle></DialogHeader>
+          <p className="text-sm text-zinc-500">All matches in this leg will be permanently deleted.</p>
+          <div className="flex gap-2 pt-1">
+            <Button variant="destructive" className="flex-1" onClick={() => {
+              if (confirmLeg) { deleteLeg(confirmLeg.id); setConfirmLeg(null) }
+            }}>Delete</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setConfirmLeg(null)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,17 +1,25 @@
+export type Tiebreaker = 'head_to_head' | 'gd' | 'gf' | 'ga' | 'wins'
+
 export interface TournamentRules {
   points_win: number
   points_draw: number
   points_loss: number
   max_score: number
   score_unit: string
+  tiebreakers: Tiebreaker[]
+  promotion_spots: number
+  relegation_spots: number
 }
 
 export const DEFAULT_RULES: TournamentRules = {
   points_win: 3,
   points_draw: 1,
   points_loss: 0,
-  max_score: 0,
-  score_unit: 'points',
+  max_score: 20,
+  score_unit: 'point',
+  tiebreakers: ['head_to_head', 'gd', 'gf'],
+  promotion_spots: 0,
+  relegation_spots: 0,
 }
 
 export type TournamentType = 'league'
@@ -28,6 +36,8 @@ export const SPORTS: { value: SportType; label: string; description: string }[] 
   { value: 'custom', label: 'Custom', description: 'Define your own scoring rules' },
 ]
 
+export type TournamentStatus = 'active' | 'completed'
+
 export interface Tournament {
   id: string
   name: string
@@ -35,6 +45,7 @@ export interface Tournament {
   type: TournamentType
   sport: SportType
   participant_type: ParticipantType
+  status: TournamentStatus
   rules: TournamentRules
   created_at: string
 }

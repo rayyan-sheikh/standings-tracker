@@ -11,17 +11,28 @@ interface Props {
   rules?: TournamentRules
 }
 
-const MEDAL = [
-  { color: '#FFD700', label: '1st' },
-  { color: '#C0C0C0', label: '2nd' },
-  { color: '#CD7F32', label: '3rd' },
-]
+
+function getForm(teamId: string, matches: MatchWithTeams[]): ('W' | 'D' | 'L')[] {
+  return matches
+    .filter(m => m.status === 'completed' && m.home_score !== null && m.away_score !== null &&
+      (m.home_team_id === teamId || m.away_team_id === teamId))
+    .slice(-5)
+    .map(m => {
+      const isHome = m.home_team_id === teamId
+      const scored = isHome ? m.home_score! : m.away_score!
+      const conceded = isHome ? m.away_score! : m.home_score!
+      return scored > conceded ? 'W' : scored < conceded ? 'L' : 'D'
+    })
+}
+
+const FORM_COLOR = { W: 'bg-green-500', D: 'bg-zinc-500', L: 'bg-red-500' }
 
 export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_RULES }: Props) {
   const [activeLeg, setActiveLeg] = useState<string>('all')
 
   const filteredMatches = activeLeg === 'all' ? matches : matches.filter(m => m.leg_id === activeLeg)
   const standings = computeStandings(teams, filteredMatches, rules)
+  const hasForm = filteredMatches.some(m => m.status === 'completed')
 
   if (teams.length === 0) {
     return <p className="text-sm text-zinc-600 text-center py-8">No teams in this tournament yet.</p>
@@ -56,21 +67,19 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
               <th className="text-center px-3 py-3 font-medium text-zinc-500">D</th>
               <th className="text-center px-3 py-3 font-medium text-zinc-500">L</th>
               <th className="text-center px-3 py-3 font-medium text-zinc-500">GD</th>
+              {hasForm && <th className="text-center px-3 py-3 font-medium text-zinc-500">Form</th>}
               <th className="text-center px-3 py-3 font-semibold text-green-400 sticky right-0 bg-zinc-800">Pts</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/60">
             {standings.map((s, i) => {
-              const medal = MEDAL[i]
+              const promotion = rules.promotion_spots > 0 && i < rules.promotion_spots
+              const relegation = rules.relegation_spots > 0 && i >= standings.length - rules.relegation_spots
               return (
-                <tr key={s.team.id} className="bg-zinc-900 hover:bg-zinc-800/40 transition-colors">
+                <tr key={s.team.id} className={`hover:bg-zinc-800/40 transition-colors ${promotion ? 'bg-green-950/20' : relegation ? 'bg-red-950/20' : 'bg-zinc-900'}`}>
                   <td className="relative px-4 py-3.5 text-zinc-600 text-xs overflow-hidden">
-                    {medal && (
-                      <span aria-label={medal.label} style={{
-                        position: 'absolute', top: 0, left: 0, width: 0, height: 0,
-                        borderTop: `18px solid ${medal.color}`, borderRight: '18px solid transparent',
-                      }} />
-                    )}
+                    {promotion && <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-green-500" />}
+                    {relegation && <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" />}
                     {i + 1}
                   </td>
                   <td className="px-4 py-3.5 font-medium text-zinc-200 whitespace-nowrap">{s.team.name}</td>
@@ -81,6 +90,19 @@ export default function StandingsTable({ teams, legs, matches, rules = DEFAULT_R
                   <td className={`px-3 py-3.5 text-center ${s.goal_difference > 0 ? 'text-green-500' : s.goal_difference < 0 ? 'text-red-500' : 'text-zinc-500'}`}>
                     {s.goal_difference > 0 ? `+${s.goal_difference}` : s.goal_difference}
                   </td>
+                  {hasForm && (
+                    <td className="px-3 py-3.5">
+                      <div className="flex items-center justify-center gap-0.5">
+                        {(() => {
+                          const form = getForm(s.team.id, filteredMatches)
+                          return form.map((r, i) => (
+                            <span key={i} title={r}
+                              className={`w-2 h-2 rounded-sm ${FORM_COLOR[r]}`} />
+                          ))
+                        })()}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-3 py-3.5 text-center font-bold text-green-400 sticky right-0 bg-zinc-900" style={{ fontFamily: 'Sora, sans-serif' }}>
                     {s.points}
                   </td>

@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts'
 import type { Team, MatchWithTeams, TournamentRules } from '@/shared/types'
 import { computeStandings } from '@/shared/utils/standings'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 
 interface Props {
   teams: Team[]
@@ -82,6 +84,30 @@ export default function CustomStats({ teams, matches, rules, scoreUnit }: Props)
   const yAxisWidth = Math.min(Math.max(...chartData.map(d => d.name.length)) * 7 + 8, 180)
 
   const top3 = standings.slice(0, 3)
+  const [h2hA, setH2hA] = useState(teams[0]?.id ?? '')
+  const [h2hB, setH2hB] = useState(teams[1]?.id ?? '')
+
+  const h2hMatches = completed.filter(m =>
+    (m.home_team_id === h2hA && m.away_team_id === h2hB) ||
+    (m.home_team_id === h2hB && m.away_team_id === h2hA)
+  )
+
+  const h2hRecord = h2hMatches.reduce(
+    (acc, m) => {
+      const aWon = (m.home_team_id === h2hA && m.home_score! > m.away_score!) ||
+        (m.away_team_id === h2hA && m.away_score! > m.home_score!)
+      const bWon = (m.home_team_id === h2hB && m.home_score! > m.away_score!) ||
+        (m.away_team_id === h2hB && m.away_score! > m.home_score!)
+      if (aWon) acc.aWins++
+      else if (bWon) acc.bWins++
+      else acc.draws++
+      return acc
+    },
+    { aWins: 0, bWins: 0, draws: 0 }
+  )
+
+  const teamA = teams.find(t => t.id === h2hA)
+  const teamB = teams.find(t => t.id === h2hB)
 
   return (
     <div className="space-y-6">
@@ -200,6 +226,63 @@ export default function CustomStats({ teams, matches, rules, scoreUnit }: Props)
           <StatCard label="Matches played" value={`${completed.length}`} sub={`of ${matches.length} total`} />
         </div>
       </div>
+
+      {/* Head to Head */}
+      {teams.length >= 2 && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">Head to Head</p>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Select value={h2hA} onValueChange={v => { if (v !== h2hB) setH2hA(v) }}>
+                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <span className="text-zinc-600 font-bold text-sm">vs</span>
+              <Select value={h2hB} onValueChange={v => { if (v !== h2hA) setH2hB(v) }}>
+                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+
+            {h2hMatches.length === 0 ? (
+              <p className="text-xs text-zinc-600 text-center py-2">No matches played between these teams yet.</p>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-zinc-100" style={{ fontFamily: 'Sora, sans-serif' }}>{h2hRecord.aWins}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5 truncate max-w-[80px]">{teamA?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-zinc-600" style={{ fontFamily: 'Sora, sans-serif' }}>{h2hRecord.draws}</p>
+                    <p className="text-xs text-zinc-600">Draws</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-zinc-100" style={{ fontFamily: 'Sora, sans-serif' }}>{h2hRecord.bWins}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5 truncate max-w-[80px]">{teamB?.name}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {h2hMatches.map(m => {
+                    const aScore = m.home_team_id === h2hA ? m.home_score! : m.away_score!
+                    const bScore = m.home_team_id === h2hB ? m.home_score! : m.away_score!
+                    return (
+                      <div key={m.id} className="flex items-center justify-between text-xs text-zinc-500 border-t border-zinc-800 pt-1.5">
+                        <span className={aScore > bScore ? 'text-zinc-200 font-medium' : ''}>{teamA?.name}</span>
+                        <span className="font-bold tabular-nums text-zinc-300" style={{ fontFamily: 'Sora, sans-serif' }}>
+                          {aScore} – {bScore}
+                        </span>
+                        <span className={bScore > aScore ? 'text-zinc-200 font-medium' : ''}>{teamB?.name}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useForm, Controller } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import type { Tournament, TournamentRules, TournamentType, SportType, ParticipantType } from '@/shared/types'
+import type { Tournament, TournamentType, SportType, ParticipantType } from '@/shared/types'
 import { DEFAULT_RULES, TOURNAMENT_TYPES, SPORTS } from '@/shared/types'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent } from '@/shared/ui/card'
@@ -16,15 +17,14 @@ import { toast } from 'sonner'
 
 export default function AdminDashboard() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [type, setType] = useState<TournamentType>('league')
-  const [sport, setSport] = useState<SportType>('custom')
-  const [participantType, setParticipantType] = useState<ParticipantType>('team')
-  const [rules, setRules] = useState<TournamentRules>({ ...DEFAULT_RULES, max_score: 0, score_unit: '' })
-  const [maxScoreInput, setMaxScoreInput] = useState('')
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  type FormValues = { name: string; description: string; type: TournamentType; sport: SportType; participantType: ParticipantType }
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormValues>({
+    defaultValues: { name: '', description: '', type: 'league', sport: 'custom', participantType: 'team' },
+  })
   const [showSignOut, setShowSignOut] = useState(false)
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null)
   const [editTournamentName, setEditTournamentName] = useState('')
@@ -34,32 +34,21 @@ export default function AdminDashboard() {
   useEffect(() => { fetchTournaments() }, [])
 
   async function fetchTournaments() {
+    setLoading(true)
     const { data } = await supabase.from('tournaments').select('*, teams(count)').order('created_at', { ascending: false })
     if (data) setTournaments(data)
+    setLoading(false)
   }
 
-  async function createTournament(e: React.FormEvent) {
-    e.preventDefault()
+  async function createTournament(data: { name: string; description: string; type: TournamentType; sport: SportType; participantType: ParticipantType }) {
     setCreating(true)
-    const finalRules = sport === 'custom' ? { ...rules, max_score: parseInt(maxScoreInput) } : rules
-    await supabase.from('tournaments').insert({ name, description: description || null, type, sport, participant_type: participantType, rules: finalRules })
-    setName(''); setDescription(''); setType('league'); setSport('custom'); setParticipantType('team')
-    setRules({ ...DEFAULT_RULES, max_score: 0, score_unit: '' }); setMaxScoreInput('')
-    setShowForm(false); setCreating(false)
+    await supabase.from('tournaments').insert({ name: data.name, description: data.description || null, type: data.type, sport: data.sport, participant_type: data.participantType, rules: DEFAULT_RULES })
+    reset(); setShowForm(false); setCreating(false)
     fetchTournaments()
     toast.success('Tournament created')
   }
 
-  function setRule(key: keyof TournamentRules, value: string) {
-    const n = parseInt(value)
-    if (!isNaN(n) && n >= 0) setRules(r => ({ ...r, [key]: n }))
-  }
-
-  function closeForm() {
-    setShowForm(false)
-    setName(''); setDescription(''); setType('league'); setSport('custom'); setParticipantType('team')
-    setRules({ ...DEFAULT_RULES, max_score: 0, score_unit: '' }); setMaxScoreInput('')
-  }
+  function closeForm() { setShowForm(false); reset() }
 
   async function updateTournamentName() {
     if (!editingTournament || !editTournamentName.trim()) return
@@ -96,15 +85,29 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        {tournaments.length === 0 ? (
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-5 animate-pulse">
+                <div className="h-3.5 w-40 bg-zinc-800 rounded mb-2" />
+                <div className="h-2.5 w-24 bg-zinc-800/60 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : tournaments.length === 0 ? (
           <p className="text-zinc-600 text-sm text-center py-12">No tournaments yet. Create your first one!</p>
         ) : (
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {tournaments.map(t => (
               <Card key={t.id} className="hover:border-zinc-700 transition-colors">
                 <CardContent className="flex items-center justify-between py-4 gap-2">
                   <Link to={`/admin/tournament/${t.id}`} className="flex-1 min-w-0">
-                    <p className="font-medium text-zinc-100">{t.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-zinc-100">{t.name}</p>
+                      {t.status === 'completed' && (
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-500 border border-amber-900/50 rounded px-1.5 py-0.5">Done</span>
+                      )}
+                    </div>
                     <p className="text-xs text-zinc-600 mt-0.5 capitalize">
                       {t.sport}
                       {' · '}
@@ -182,94 +185,64 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle>New tournament</DialogTitle>
           </DialogHeader>
-          <form onSubmit={createTournament} className="space-y-5">
-            <div className="space-y-1.5">
+          <form onSubmit={handleSubmit(createTournament)} className="space-y-5">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="t-name">Name</Label>
-              <Input id="t-name" value={name} onChange={e => setName(e.target.value)} required placeholder="Premier League Season 1" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="t-desc">Description (optional)</Label>
-              <Input id="t-desc" value={description} onChange={e => setDescription(e.target.value)} placeholder="5-a-side tournament" />
+              <Input id="t-name" placeholder="Premier League Season 1"
+                {...register('name', { required: true })}
+                className={errors.name ? 'border-red-500' : ''} />
+              {errors.name && <p className="text-xs text-red-400">Name is required</p>}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="t-desc">Description <span className="text-zinc-600">(optional)</span></Label>
+              <Input id="t-desc" placeholder="5-a-side tournament" {...register('description')} />
+            </div>
+
+            <div className="flex flex-col gap-2">
               <Label>Participants</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {([['singles', 'Singles'], ['doubles', 'Doubles'], ['team', 'Teams']] as [ParticipantType, string][]).map(([p, label]) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setParticipantType(p)}
-                    className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                      participantType === p
-                        ? 'border-blue-500/60 bg-blue-900/20 text-blue-300'
-                        : 'border-zinc-700 bg-zinc-800/40 text-zinc-400 hover:border-zinc-600'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <Controller name="participantType" control={control} render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="singles">Singles</SelectItem>
+                    <SelectItem value="doubles">Doubles</SelectItem>
+                    <SelectItem value="team">Teams</SelectItem>
+                  </SelectContent>
+                </Select>
+              )} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+              <div className="flex flex-col gap-2">
                 <Label>Tournament type</Label>
-                <Select value={type} onValueChange={v => setType(v as TournamentType)}>
-                  <SelectTrigger className="w-full focus:ring-blue-500/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TOURNAMENT_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value} description={t.description}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller name="type" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TOURNAMENT_TYPES.map(t => (
+                        <SelectItem key={t.value} value={t.value} description={t.description}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )} />
               </div>
-              <div className="space-y-1.5">
+              <div className="flex flex-col gap-2">
                 <Label>Sport</Label>
-                <Select value={sport} onValueChange={v => setSport(v as SportType)}>
-                  <SelectTrigger className="w-full focus:ring-blue-500/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SPORTS.map(s => (
-                      <SelectItem key={s.value} value={s.value} description={s.description}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller name="sport" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SPORTS.map(s => (
+                        <SelectItem key={s.value} value={s.value} description={s.description}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )} />
               </div>
             </div>
 
-            {sport === 'custom' && (
-              <div className="space-y-3 rounded-xl border border-zinc-700 bg-zinc-800/30 px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Scoring rules</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pts-win">Points — Win</Label>
-                    <Input id="pts-win" type="number" min={0} value={rules.points_win} onChange={e => setRule('points_win', e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pts-draw">Points — Draw</Label>
-                    <Input id="pts-draw" type="number" min={0} value={rules.points_draw} onChange={e => setRule('points_draw', e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pts-loss">Points — Loss</Label>
-                    <Input id="pts-loss" type="number" min={0} value={rules.points_loss} onChange={e => setRule('points_loss', e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="max-score">Max score per team</Label>
-                    <Input id="max-score" type="number" min={1} value={maxScoreInput} onChange={e => setMaxScoreInput(e.target.value)} required placeholder="e.g. 20" />
-                  </div>
-                  <div className="space-y-1.5 col-span-2">
-                    <Label htmlFor="score-unit">Score unit (singular)</Label>
-                    <Input id="score-unit" type="text" value={rules.score_unit} onChange={e => setRules(r => ({ ...r, score_unit: e.target.value }))} required placeholder="e.g. goal, point, run" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-2">
               <Button type="submit" variant="blue" disabled={creating} className="flex-1">
                 {creating ? 'Creating…' : 'Create tournament'}
               </Button>

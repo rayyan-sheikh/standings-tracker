@@ -16,7 +16,8 @@ import { Button } from '@/shared/ui/button'
 import Logo from '@/shared/ui/logo'
 import Footer from '@/shared/ui/footer'
 import { useRealtimeTournament } from '@/features/viewer/hooks/useRealtimeTournament'
-import { ArrowLeft, QrCode } from 'lucide-react'
+import { ArrowLeft, QrCode, Trophy, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function TournamentAdmin() {
   const { id } = useParams<{ id: string }>()
@@ -48,8 +49,28 @@ export default function TournamentAdmin() {
     ])
     if (t) setTournament(t)
     if (te) setTeams(te)
-    if (l) setLegs(l)
     if (d) setDays(d)
+
+    // Auto-create Leg 1 if no legs exist and we have enough teams
+    if (l && l.length === 0 && te && te.length >= 2) {
+      const { data: newLeg } = await supabase
+        .from('legs').insert({ tournament_id: tid, leg_number: 1, name: 'Leg 1' })
+        .select().single()
+      if (newLeg) {
+        const schedule = generateRoundRobin(te.map((t: Team) => t.id), false)
+        const rows = schedule.map(m => ({
+          leg_id: newLeg.id, home_team_id: m.homeTeamId,
+          away_team_id: m.awayTeamId, round_number: m.round, status: 'scheduled',
+        }))
+        await supabase.from('matches').insert(rows)
+        const { data: freshLegs } = await supabase.from('legs').select('*').eq('tournament_id', tid).order('leg_number')
+        if (freshLegs) setLegs(freshLegs)
+        if (freshLegs && freshLegs.length > 0) fetchMatches(freshLegs.map((x: Leg) => x.id))
+        return
+      }
+    }
+
+    if (l) setLegs(l)
     if (l && l.length > 0) fetchMatches(l.map((x: Leg) => x.id))
   }
 
@@ -88,6 +109,14 @@ export default function TournamentAdmin() {
     fetchAll(id)
   }
 
+  async function toggleStatus() {
+    if (!id || !tournament) return
+    const newStatus = tournament.status === 'completed' ? 'active' : 'completed'
+    await supabase.from('tournaments').update({ status: newStatus }).eq('id', id)
+    setTournament(t => t ? { ...t, status: newStatus } : t)
+    toast.success(newStatus === 'completed' ? 'Tournament marked as completed' : 'Tournament reopened')
+  }
+
   async function saveRules(rules: TournamentRules, participantType: ParticipantType) {
     if (!id) return
     await supabase.from('tournaments').update({ rules, participant_type: participantType }).eq('id', id)
@@ -114,10 +143,22 @@ export default function TournamentAdmin() {
               <h1 className="font-semibold text-zinc-300 text-xs mt-0.5 truncate">{tournament.name}</h1>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setShowQR(true)} className="shrink-0 ml-3">
-            <QrCode className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">Share QR</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            <Button
+              variant={tournament.status === 'completed' ? 'outline' : 'blue'}
+              size="sm"
+              onClick={toggleStatus}
+            >
+              {tournament.status === 'completed'
+                ? <><RotateCcw className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Reopen</span></>
+                : <><Trophy className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Complete</span></>
+              }
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowQR(true)}>
+              <QrCode className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Share QR</span>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -244,6 +285,7 @@ export default function TournamentAdmin() {
             <RulesEditor
               rules={rules}
               participantType={tournament.participant_type ?? 'team'}
+              totalTeams={teams.length}
               onSave={saveRules}
             />
           </TabsContent>

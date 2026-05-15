@@ -8,7 +8,8 @@ import StandingsTable from '@/features/viewer/components/StandingsTable'
 import StatsView from '@/features/viewer/components/StatsView'
 import { useRealtimeTournament } from '@/features/viewer/hooks/useRealtimeTournament'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
-import { Swords } from 'lucide-react'
+import { Swords, Trophy } from 'lucide-react'
+import { computeStandings } from '@/shared/utils/standings'
 import Logo from '@/shared/ui/logo'
 import Footer from '@/shared/ui/footer'
 
@@ -72,14 +73,29 @@ export default function PublicTournament() {
                 Live
               </span>
             </div>
-            <div className="flex items-center gap-2 mb-3">
-              <Swords className="h-4 w-4 text-green-400 shrink-0" />
-              <div className="min-w-0">
-                <h1 className="text-base font-bold text-zinc-300 leading-tight">{tournament.name}</h1>
-                {tournament.description && (
-                  <p className="text-xs text-zinc-500 mt-0.5">{tournament.description}</p>
-                )}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Swords className="h-4 w-4 text-green-400 shrink-0" />
+                <div className="min-w-0">
+                  <h1 className="text-base font-bold text-zinc-300 leading-tight">{tournament.name}</h1>
+                  {tournament.description && (
+                    <p className="text-xs text-zinc-500 mt-0.5">{tournament.description}</p>
+                  )}
+                </div>
               </div>
+              {matches.length > 0 && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="w-16 h-1 rounded-full bg-zinc-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-green-500 transition-all duration-500"
+                      style={{ width: `${(matches.filter(m => m.status === 'completed').length / matches.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-zinc-500 tabular-nums">
+                    {matches.filter(m => m.status === 'completed').length}/{matches.length}
+                  </span>
+                </div>
+              )}
             </div>
             <TabsList className="bg-transparent p-0 h-auto gap-0 rounded-none w-full justify-start border-b border-zinc-800 -mb-px">
               {(['standings', 'schedule', 'stats'] as const).map(tab => (
@@ -94,6 +110,21 @@ export default function PublicTournament() {
             </TabsList>
           </div>
         </header>
+
+        {tournament.status === 'completed' && teams.length > 0 && (() => {
+          const winner = computeStandings(teams, matches, tournament.rules ?? DEFAULT_RULES)[0]
+          return winner ? (
+            <div className="bg-gradient-to-r from-green-950/60 via-emerald-950/40 to-green-950/60 border-b border-green-900/30 px-4 sm:px-6 py-4">
+              <div className="max-w-3xl mx-auto flex items-center gap-3">
+                <Trophy className="h-5 w-5 text-green-400 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-green-700 uppercase tracking-widest font-semibold">Tournament winner</p>
+                  <p className="text-base font-bold text-green-300">{winner.team.name}</p>
+                </div>
+              </div>
+            </div>
+          ) : null
+        })()}
 
         <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <TabsContent value="standings">
