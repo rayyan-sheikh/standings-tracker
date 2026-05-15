@@ -42,7 +42,8 @@ export default function AdminDashboard() {
 
   async function createTournament(data: { name: string; description: string; type: TournamentType; sport: SportType; participantType: ParticipantType }) {
     setCreating(true)
-    await supabase.from('tournaments').insert({ name: data.name, description: data.description || null, type: data.type, sport: data.sport, participant_type: data.participantType, rules: DEFAULT_RULES })
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('tournaments').insert({ name: data.name, description: data.description || null, type: data.type, sport: data.sport, participant_type: data.participantType, rules: DEFAULT_RULES, user_id: user?.id })
     reset(); setShowForm(false); setCreating(false)
     fetchTournaments()
     toast.success('Tournament created')
