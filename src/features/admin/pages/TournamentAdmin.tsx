@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import type { Tournament, Team, Leg, MatchWithTeams, TournamentRules, ParticipantType } from '@/shared/types'
+import type { Tournament, Team, Leg, MatchWithTeams, TournamentRules, ParticipantType, TournamentDay } from '@/shared/types'
 import { DEFAULT_RULES } from '@/shared/types'
 import { generateRoundRobin } from '@/shared/lib/roundRobin'
 import TeamManager from '@/features/admin/components/TeamManager'
@@ -9,6 +9,7 @@ import LegManager from '@/features/admin/components/LegManager'
 import MatchCard from '@/features/admin/components/MatchCard'
 import QRCodeModal from '@/features/admin/components/QRCodeModal'
 import RulesEditor from '@/features/admin/components/RulesEditor'
+import SmartScheduler from '@/features/admin/components/SmartScheduler'
 import StandingsTable from '@/features/viewer/components/StandingsTable'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import { Button } from '@/shared/ui/button'
@@ -24,6 +25,7 @@ export default function TournamentAdmin() {
   const [legs, setLegs] = useState<Leg[]>([])
   const [matches, setMatches] = useState<MatchWithTeams[]>([])
   const [activeLeg, setActiveLeg] = useState<string>('all')
+  const [days, setDays] = useState<TournamentDay[]>([])
   const [activeTab, setActiveTab] = useState('teams')
   const [showQR, setShowQR] = useState(false)
 
@@ -38,14 +40,16 @@ export default function TournamentAdmin() {
   })
 
   async function fetchAll(tid: string) {
-    const [{ data: t }, { data: te }, { data: l }] = await Promise.all([
+    const [{ data: t }, { data: te }, { data: l }, { data: d }] = await Promise.all([
       supabase.from('tournaments').select('*').eq('id', tid).single(),
       supabase.from('teams').select('*').eq('tournament_id', tid).order('created_at'),
       supabase.from('legs').select('*').eq('tournament_id', tid).order('leg_number'),
+      supabase.from('tournament_days').select('*').eq('tournament_id', tid).order('day_number'),
     ])
     if (t) setTournament(t)
     if (te) setTeams(te)
     if (l) setLegs(l)
+    if (d) setDays(d)
     if (l && l.length > 0) fetchMatches(l.map((x: Leg) => x.id))
   }
 
@@ -145,6 +149,15 @@ export default function TournamentAdmin() {
           </TabsContent>
 
           <TabsContent value="schedule">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-200">Tournament schedule</h3>
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  {days.length > 0 ? `${days.length} day${days.length !== 1 ? 's' : ''} set up` : 'No days set up yet'}
+                </p>
+              </div>
+              <SmartScheduler tournamentId={id!} days={days} matches={displayedMatches} onUpdate={() => fetchAll(id!)} />
+            </div>
             <LegManager legs={legs} activeLeg={activeLeg} onSelectLeg={setActiveLeg} />
             <div className="space-y-8 mt-4">
               {(() => {
@@ -161,7 +174,6 @@ export default function TournamentAdmin() {
                 return sortedLegs.map(leg => {
                   const legMatches = displayedMatches
                     .filter(m => m.leg_id === leg.id)
-                    .sort((a, b) => a.round_number - b.round_number)
                   if (legMatches.length === 0) return null
                   return (
                     <div key={leg.id}>
@@ -171,11 +183,42 @@ export default function TournamentAdmin() {
                         </h3>
                         <div className="flex-1 h-px bg-zinc-800" />
                       </div>
-                      <div className="space-y-2">
-                        {legMatches.map(m => {
-                          counter++
-                          return <MatchCard key={m.id} match={m} matchNumber={counter} maxScore={rules.max_score} onUpdate={() => fetchAll(id!)} />
-                        })}
+                      <div className="space-y-4">
+                        {days.length > 0 ? (() => {
+                          const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number)
+                          const byDay = sortedDays.map(day => ({
+                            day,
+                            dayMatches: legMatches.filter(m => m.day_id === day.id),
+                          }))
+                          const unscheduled = legMatches.filter(m => !m.day_id)
+                          return (
+                            <>
+                              {byDay.map(({ day, dayMatches }) => {
+                                if (dayMatches.length === 0) return null
+                                return (
+                                  <div key={day.id}>
+                                    <p className="text-[11px] font-semibold text-blue-400/70 uppercase tracking-widest mb-2">
+                                      {day.label ?? `Day ${day.day_number}`}
+                                    </p>
+                                    <div className="space-y-2">
+                                      {dayMatches.map(m => { counter++; return <MatchCard key={m.id} match={m} matchNumber={counter} maxScore={rules.max_score} days={days} onUpdate={() => fetchAll(id!)} /> })}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                              {unscheduled.length > 0 && (
+                                <div>
+                                  <p className="text-[11px] font-semibold text-zinc-600 uppercase tracking-widest mb-2">Unscheduled</p>
+                                  <div className="space-y-2">
+                                    {unscheduled.map(m => { counter++; return <MatchCard key={m.id} match={m} matchNumber={counter} maxScore={rules.max_score} days={days} onUpdate={() => fetchAll(id!)} /> })}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )
+                        })() : (
+                          legMatches.map(m => { counter++; return <MatchCard key={m.id} match={m} matchNumber={counter} maxScore={rules.max_score} days={days} onUpdate={() => fetchAll(id!)} /> })
+                        )}
                       </div>
                     </div>
                   )

@@ -53,9 +53,18 @@ export interface Leg {
   name: string | null
 }
 
+export interface TournamentDay {
+  id: string
+  tournament_id: string
+  day_number: number
+  label: string | null
+  date: string // ISO date string YYYY-MM-DD
+}
+
 export interface Match {
   id: string
   leg_id: string
+  day_id: string | null
   home_team_id: string
   away_team_id: string
   home_score: number | null

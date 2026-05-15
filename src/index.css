@@ -3,6 +3,12 @@
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-display: 'Sora', system-ui, sans-serif;
+
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #27272a;
+  --color-accent-foreground: #f4f4f5;
+  --color-muted-foreground: #71717a;
 }
 
 body {

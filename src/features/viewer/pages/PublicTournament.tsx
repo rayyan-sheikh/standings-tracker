@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import type { Tournament, Team, Leg, MatchWithTeams } from '@/shared/types'
+import type { Tournament, Team, Leg, MatchWithTeams, TournamentDay } from '@/shared/types'
 import { DEFAULT_RULES } from '@/shared/types'
 import ScheduleView from '@/features/viewer/components/ScheduleView'
 import StandingsTable from '@/features/viewer/components/StandingsTable'
@@ -18,16 +18,19 @@ export default function PublicTournament() {
   const [teams, setTeams] = useState<Team[]>([])
   const [legs, setLegs] = useState<Leg[]>([])
   const [matches, setMatches] = useState<MatchWithTeams[]>([])
+  const [days, setDays] = useState<TournamentDay[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async (tid: string) => {
-    const [{ data: t }, { data: te }, { data: l }] = await Promise.all([
+    const [{ data: t }, { data: te }, { data: l }, { data: d }] = await Promise.all([
       supabase.from('tournaments').select('*').eq('id', tid).single(),
       supabase.from('teams').select('*').eq('tournament_id', tid).order('created_at'),
       supabase.from('legs').select('*').eq('tournament_id', tid).order('leg_number'),
+      supabase.from('tournament_days').select('*').eq('tournament_id', tid).order('day_number'),
     ])
     if (t) setTournament(t)
     if (te) setTeams(te)
+    if (d) setDays(d)
     if (l) {
       setLegs(l)
       if (l.length > 0) {
@@ -97,7 +100,7 @@ export default function PublicTournament() {
             <StandingsTable teams={teams} legs={legs} matches={matches} rules={tournament.rules ?? DEFAULT_RULES} />
           </TabsContent>
           <TabsContent value="schedule">
-            <ScheduleView legs={legs} matches={matches} scoreUnit={tournament.rules?.score_unit || 'points'} isDoubles={tournament.participant_type === 'doubles'} />
+            <ScheduleView legs={legs} days={days} matches={matches} scoreUnit={tournament.rules?.score_unit || 'points'} isDoubles={tournament.participant_type === 'doubles'} />
           </TabsContent>
           <TabsContent value="stats">
             <StatsView
